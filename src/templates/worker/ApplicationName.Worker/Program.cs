@@ -6,9 +6,9 @@ using ApplicationName.Worker.Application.Services;
 using ApplicationName.Worker.Consumers;
 using ApplicationName.Worker.Contracts.Commands;
 using ApplicationName.Worker.Infrastructure;
+using Conveyo;
+using Conveyo.RabbitMQ;
 using Mapster;
-using MassTransit;
-using MassTransit.Logging;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
@@ -18,11 +18,12 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using StackExchange.Redis;
+
 #if DEBUG
 using DotNetEnv;
 using DotNetEnv.Configuration;
 #endif
-using StackExchange.Redis;
 
 namespace ApplicationName.Worker;
 
@@ -80,18 +81,20 @@ public static class Program
         services.AddMapster();
         TypeAdapterConfig.GlobalSettings.Scan(Assembly.GetExecutingAssembly());
 
-        // MassTransit
-        services.AddMassTransit(i =>
+        // Conveyo
+        services.AddConveyo(i =>
         {
+            i.Map<SetExampleRemoteCodeCommand>("applicationname:example.setremotecode.v1");
+
             var uri = new Uri($"queue:{ServiceName}");
-            EndpointConvention.Map<SetExampleRemoteCodeCommand>(uri);
+            i.MapEndpointConvention<SetExampleRemoteCodeCommand>(uri);
 
             i.AddConsumer<ExternalEventHandler>();
             i.AddConsumer<ExampleCommandHandler>();
 
             i.UsingRabbitMq((ctx, cfg) =>
             {
-                cfg.Host(configuration["rabbitmq:host"], configuration["rabbitmq:vhost"], h =>
+                cfg.Host(configuration["rabbitmq:host"]!, configuration["rabbitmq:vhost"]!, h =>
                 {
                     h.Username(configuration["rabbitmq:username"]!);
                     h.Password(configuration["rabbitmq:password"]!);
@@ -121,20 +124,13 @@ public static class Program
         services.AddOpenTelemetry()
             .WithTracing(cfg => cfg
                 .SetResourceBuilder(appResourceBuilder)
-                .AddSource(DiagnosticHeaders.DefaultListenerName) // MassTransit
-                .AddOtlpExporter(configure =>
-                {
-                    configure.Endpoint = otlpEndpoint;
-                }))
+                // .AddSource(DiagnosticHeaders.DefaultListenerName) // MassTransit
+                .AddOtlpExporter(configure => { configure.Endpoint = otlpEndpoint; }))
             .WithMetrics(cfg => cfg
                 .SetResourceBuilder(appResourceBuilder)
-                .AddProcessInstrumentation()
                 .AddRuntimeInstrumentation()
-                .AddOtlpExporter(configure =>
-                {
-                    configure.Endpoint = otlpEndpoint;
-                })
-        );
+                .AddOtlpExporter(configure => { configure.Endpoint = otlpEndpoint; })
+            );
     }
 
     private static void ConfigureLogging(HostBuilderContext context, ILoggingBuilder builder)
@@ -147,11 +143,9 @@ public static class Program
             configure.ParseStateValues = true;
             configure.IncludeFormattedMessage = true;
             configure.SetResourceBuilder(ResourceBuilder.CreateDefault()
-                    .AddService(ServiceName, autoGenerateServiceInstanceId: false, serviceInstanceId: Dns.GetHostName()))
-                .AddOtlpExporter(opts =>
-                {
-                    opts.Endpoint = new Uri(configuration["opentelemetry:endpoint"]!);
-                });
+                    .AddService(ServiceName, autoGenerateServiceInstanceId: false,
+                        serviceInstanceId: Dns.GetHostName()))
+                .AddOtlpExporter(opts => { opts.Endpoint = new Uri(configuration["opentelemetry:endpoint"]!); });
         });
     }
 }

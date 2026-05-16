@@ -3,7 +3,7 @@ using ApplicationName.Api.Application.Repositories;
 using ApplicationName.Api.Contracts;
 using ApplicationName.Shared.Commands;
 using ApplicationName.Shared.Events;
-using MassTransit;
+using Conveyo;
 using Microsoft.AspNetCore.SignalR;
 
 namespace ApplicationName.Api.Consumers;
@@ -11,7 +11,8 @@ namespace ApplicationName.Api.Consumers;
 public class LocalEventHandler(IHubContext<ApiHub> hub, IProtoCacheRepository protoCacheRepository) :
     IConsumer<ExampleCreatedEvent>,
     IConsumer<ExampleUpdatedEvent>,
-    IConsumer<ExampleRemoteCodeSetEvent>
+    IConsumer<ExampleRemoteCodeSetEvent>,
+    IConsumer<Fault<CreateExampleCommand>>
 {
     public async Task Consume(ConsumeContext<ExampleCreatedEvent> context)
     {

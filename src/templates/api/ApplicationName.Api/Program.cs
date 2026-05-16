@@ -7,19 +7,20 @@ using ApplicationName.Api.Consumers;
 using ApplicationName.Api.Infrastructure;
 using ApplicationName.Api.Validators;
 using ApplicationName.Shared.Commands;
+using Conveyo;
+using Conveyo.RabbitMQ;
 using FluentValidation;
 using Mapster;
-using MassTransit;
-using MassTransit.Logging;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using StackExchange.Redis;
+
 #if DEBUG
 using DotNetEnv;
 using DotNetEnv.Configuration;
 #endif
-using StackExchange.Redis;
 
 namespace ApplicationName.Api;
 
@@ -56,18 +57,21 @@ public static class Program
         services.AddMapster();
         TypeAdapterConfig.GlobalSettings.Scan(Assembly.GetExecutingAssembly());
 
-        // MassTransit + RabbitMQ
-        services.AddMassTransit(i =>
+        // Conveyo
+        services.AddConveyo(i =>
         {
+            i.Map<CreateExampleCommand>("applicationname:example.create.v1");
+            i.Map<UpdateExampleCommand>("applicationname:example.update.v1");
+
             var uri = new Uri("queue:ApplicationName.Worker");
-            EndpointConvention.Map<CreateExampleCommand>(uri);
-            EndpointConvention.Map<UpdateExampleCommand>(uri);
+            i.MapEndpointConvention<CreateExampleCommand>(uri);
+            i.MapEndpointConvention<UpdateExampleCommand>(uri);
 
             i.AddConsumer<LocalEventHandler>();
 
             i.UsingRabbitMq((ctx, cfg) =>
             {
-                cfg.Host(configuration["rabbitmq:host"], configuration["rabbitmq:vhost"], h =>
+                cfg.Host(configuration["rabbitmq:host"]!, configuration["rabbitmq:vhost"]!, h =>
                 {
                     h.Username(configuration["rabbitmq:username"]!);
                     h.Password(configuration["rabbitmq:password"]!);
@@ -128,7 +132,7 @@ public static class Program
                 {
                     options.RecordException = true;
                 })
-                .AddSource(DiagnosticHeaders.DefaultListenerName) // MassTransit
+                // .AddSource(DiagnosticHeaders.DefaultListenerName) // MassTransit
                 .AddRedisInstrumentation()
                 .AddOtlpExporter(configure =>
                 {
@@ -137,7 +141,6 @@ public static class Program
             .WithMetrics(builder => builder
                 .SetResourceBuilder(appResourceBuilder)
                 .AddAspNetCoreInstrumentation()
-                .AddProcessInstrumentation()
                 .AddRuntimeInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddOtlpExporter(configure =>
