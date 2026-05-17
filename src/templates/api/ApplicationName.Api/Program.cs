@@ -132,7 +132,7 @@ public static class Program
                 {
                     options.RecordException = true;
                 })
-                // .AddSource(DiagnosticHeaders.DefaultListenerName) // MassTransit
+                .AddConveyoInstrumentation()
                 .AddRedisInstrumentation()
                 .AddOtlpExporter(configure =>
                 {

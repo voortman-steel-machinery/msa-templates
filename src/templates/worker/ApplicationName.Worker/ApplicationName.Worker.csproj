@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="Conveyo" Version="1.0.0" />
+    <PackageReference Include="Conveyo.OpenTelemetry" Version="1.0.0" />
     <PackageReference Include="Conveyo.RabbitMQ" Version="1.0.0" />
     <PackageReference Include="DotNetEnv" Version="3.1.1" Condition="'$(Configuration)' == 'Debug'" />
     <PackageReference Include="Mapster" Version="10.0.1" />

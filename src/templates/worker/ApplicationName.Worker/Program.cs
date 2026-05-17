@@ -124,7 +124,7 @@ public static class Program
         services.AddOpenTelemetry()
             .WithTracing(cfg => cfg
                 .SetResourceBuilder(appResourceBuilder)
-                // .AddSource(DiagnosticHeaders.DefaultListenerName) // MassTransit
+                .AddConveyoInstrumentation()
                 .AddOtlpExporter(configure => { configure.Endpoint = otlpEndpoint; }))
             .WithMetrics(cfg => cfg
                 .SetResourceBuilder(appResourceBuilder)
