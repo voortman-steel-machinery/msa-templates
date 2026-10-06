@@ -1,3 +1,7 @@
+> [!Caution]
+> Repository archived. 
+> Templates can be found on https://github.com/voortman-steel-machinery/mda-templates
+
 # Message-driven Service Architecture Templates
 
 This project contains a set of templates to scaffold a small message-driven system: a **Web** frontend, an **API**, a **Worker**, and a **Shared** project for contracts.
